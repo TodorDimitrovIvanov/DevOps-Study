@@ -1,0 +1,22 @@
+
+
+
+
+
+How to generate a Secret for the MySQL Password:
+
+Command: 
+--------
+kubectl create secret generic mysql-pass --from-literal=MYSQL_PASS=kP6hE3zE7aJ7nQ6i --from-literal=MYSQL_ROOT_PASS=rY3uZ3uN9wM8jA2hV6pL2vI2lI7mW2zK
+
+Additional requirement: 
+------------------------
+kubectl create secret generic mysql-root-pass --from-literal MYSQL_ROOT_PASS=rY3uZ3uN9wM8jA2hV6pL2vI2lI7mW2zK
+
+Explanation:
+-------------
+generic -> The type of the Secret can be changed to "tls" for https:// and "docker-registry" for authenticating to a Private Docker Registry
+mysql-pass -> Very important! This is the name declared in the deployments that use a MySQL connection
+--from-literal -> Accepts the password that's provided via the CLI  
+MYSQL_PASS -> Is the key of the dictionaty and everything after '=' is the value - This is a KeyValue pair
+

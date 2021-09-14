@@ -1,0 +1,15 @@
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: wpmt-cluster-mysql-serivce    # This name will later be used as a value in the mysql-deployment.yaml file
+  labels:
+    app: wpmt-cluster-mysql-service
+spec:
+  selector:
+    app: wpmt-cluster-mysql-deployment
+    #tier: mysql
+  clusterIP: None
+  ports:
+  - port: 3306
+    targetPort: 3006

@@ -1,0 +1,84 @@
+# Source: https://kubernetes.io/docs/tutorials/stateful-application/mysql-wordpress-persistent-volume/
+# Additional details available here:
+# https://medium.com/@containerum/how-to-deploy-wordpress-and-mysql-on-kubernetes-bda9a3fdd2d5
+
+# TODO: Add a wpmt-cluster Deployment which will use a LoadBalancer service and have the Request Router Pod
+# TODO: Add a wpmt-cluster-auth Deployment which will use a ClusterIP service and accepts requests sent to a specific port
+# TODO: Add a wpmt-cluster-signup Deployment with a ClusterIP service
+# TODO: Add a wpmt-cluster-logger Deployment with a ClusterIP service
+
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wpmt-cluster-mysql-deployment
+  labels:
+    app: wpmt-cluster-mysql-deployment
+spec:
+  selector:
+    matchLabels:
+      app: wpmt-cluster-mysql-deployment
+      tier: mysql
+  strategy:
+    # Source: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+    # This terminate the old version of the Deployment and then releases the new one
+    # This is preferable to a rolling update since this way we'll prevent data duplication
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: wpmt-cluster-mysql-deployment
+        tier: mysql
+    spec:
+      containers:
+      - image: mysql:5.6
+        name: mysql  
+        # Here we create an environment variable which will allow us to connect to the MySQL service
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        # This part is really important - this name is linked to the "volumes" section in this deployment
+        - name: wpmt-cluster-mysql-storage  
+          mountPath: /var/lib/mysql/data
+          # The subPath is the folder within the "mountPath" where data will be saved
+          subPath: wpmt-cluster
+        # Environment variables
+        env:
+          - name: MYSQL_HOST
+            value: wpmt-cluster-mysql-serivce
+          - name: MYSQL_PORT
+            value: '3306'
+          - name: MYSQL_DB
+            value: cluster_eu01
+          - name: MYSQL_USER
+            value: cluser_eu01_user
+          - name: MYSQL_USER_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysql-pass
+                key: MYSQL_PASS
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef: 
+                name: mysql-pass
+                key: MYSQL_ROOT_PASS
+        resources:
+          # The limits are the max values that can be assigned to a container
+          # The limits can be never be lower than the requests
+          # Source: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          # The requests are what the container is guaranteed to get
+          requests:
+            cpu: "1"
+            memory: "1Gi"
+      volumes:
+      - name: wpmt-cluster-mysql-storage
+        persistentVolumeClaim:
+          claimName: wpmt-cluser-mysql-claim
+
+
+

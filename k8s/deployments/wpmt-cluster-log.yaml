@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wpmt-cluster-log-deployment
+  labels:
+    app: wpmt-cluster-log-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: wpmt-cluster-log-deployment
+  template:
+    metadata:
+      labels:
+        app: wpmt-cluster-log-deployment
+    spec:
+      containers:
+      - name: wpmt-cluster-log-deployment
+        image: iligard/wpmt-cluster-log:1.0
+        # This specifies whether Kubernetes should check the official Docker repos
+        # imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        ports:
+          # Defines the port that is mapped to the image
+          # This is also the port through which the App can be reached from outside the container
+        - containerPort: 6902
+

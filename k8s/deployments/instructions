@@ -1,0 +1,96 @@
+
+
+How to set up a local Registry using Kubectl:
+=============================================
+
+Source: https://minikube.sigs.k8s.io/docs/handbook/registry/#docker-on-windows
+
+1. Enable the Registry addon within Minikube:
+---------------------------------------------
+    minikube addons enable registry
+
+2. Check the port provided in the command above and verify that the following URL loads:
+-----------------------------------------------------------------
+    http://localhost:____PORT____/v2/_catalog
+
+
+3. Routing the Docker VM's port 5000 to port 5000 on the PC:
+------------------------------------------------------------
+    docker run --rm -it --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:host.docker.internal:5000"
+
+
+DOESN"T WORK ON WINDOWS
+........
+
+
+
+Source: https://stackoverflow.com/questions/36874880/kubernetes-cannot-pull-local-image
+
+
+
+
+How to set up a local Registry and add existing local images to it:
+====================================================================
+
+Source: https://stackoverflow.com/questions/36874880/kubernetes-cannot-pull-local-image
+
+1. Set up a local Registry:
+---------------------------
+    docker run -d -p 5000:5000 --restart=always --name registry registry:2
+
+    -> This creates a Registry on localhost:5000
+
+
+2. Create tags for the images on the localhost Registry:
+--------------------------------------------------------
+    docker tag wpmt-cluster/logger:latest localhost:5000/wpmt-cluster/logger
+    docker tag wpmt-cluster/user:latest localhost:5000/wpmt-cluster/user
+    docker tag wpmt-cluster/auth:latest localhost:5000/wpmt-cluster/auth
+
+3. Push to the local Registry:
+------------------------------
+    docker push localhost:5000/wpmt-cluster/logger
+    docker push localhost:5000/wpmt-cluster/user
+    docker push localhost:5000/wpmt-cluster/auth
+
+
+4. Get the Minikube IP address:
+-------------------------------
+    minikube ip
+
+
+(If using an existing Minikube instance it needs to be deleted before the local Registry can be applied)
+5. Stop Minikube:
+-----------------
+    minikube stop 
+
+
+6. Delete the OLD Minikube instance:
+-----------------
+    minikube delete
+
+
+5. Start Minikube with '--insecure-registry' flag and the IP address from the previous step:
+--------------------------------------------------
+    minikube start --insecure-registry="192.168.49.2:5000"
+
+
+DOESN"T WORK ON WINDOWS
+............
+
+
+
+
+
+
+
+
+How to push local images to the Docker Hub:
+===========================================
+
+docker build -t ___IMAGE_NAME___:__TAG__
+
+
+docker tag _____IMAGE_NAME_____:__TAG__ ___USER___/_____IMAGE_NAME_____:__TAG__
+
+dockr push ___USER___/_____IMAGE_NAME_____:__TAG__

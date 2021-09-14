@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wpmt-cluster-auth-deployment
+  labels:
+    app: wpmt-cluster-auth-deployment
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: wpmt-cluster-auth-deployment
+  template:
+    metadata:
+      labels:
+        app: wpmt-cluster-auth-deployment
+    spec:
+      containers:
+      - name: wpmt-cluster-auth-deployment
+        image: iligard/wpmt-cluster-auth:1.0
+        # This specifies whether Kubernetes should check the official Docker repos
+        # imagePullPolicy: IfNotPresent
+        env:
+        # Source: https://www.udemy.com/course/docker-and-kubernetes-the-complete-guide/learn/lecture/11582324#notes
+          - name: MYSQL_HOST
+            value: wpmt-cluster-mysql-service
+          - name: MYSQL_PORT
+            value: '3306'
+          - name: MYSQL_DB
+            value: cluster_eu01
+          - name: MYSQL_USER
+            value: cluser_eu01_user 
+          - name: MYSQL_USER_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysql-pass
+                key: MYSQL_PASS
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        ports:
+          # Defines the port that is mapped to the image
+          # This is also the port through which the App can be reached from outside the container
+        - containerPort: 6901
+

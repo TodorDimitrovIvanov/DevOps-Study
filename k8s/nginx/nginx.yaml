@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cluster-nginx
+spec:
+  type: NodePort
+  selector:
+    app: cluster-nginx
+  ports:
+  # This is the port on the container that can be accessed by other Pods/Containers
+  - port: 80
+  # This is the port within the Pod that we want to open incoming traffic to 
+    targetPort: 80
+    name: http
+  # This is the port on the container that can be accessed by other Pods/Containers
+  - port: 443
+  # This is the port within the Pod that we want to open incoming traffic to
+    targetPort: 443
+    name: https
+
+---
+
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name:  cluster-nginx-controller
+  spec:
+    selector:
+      matchLabels:
+        app: cluster-nginx-controller
+    template:
+      metadata:
+        labels:
+          app: cluster-nginx-controller
+      spec:
+        containers:
+        - name:  cluster-nginx-controller
+          image: wpmt-cluster/nginx:v0.1.4
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          ports:
+          - containerPort: 80
+  

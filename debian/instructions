@@ -1,0 +1,194 @@
+System: 
+[12:14][Thu Jul 29][root][~]: cat /etc/os-release
+PRETTY_NAME="Debian GNU/Linux 10 (buster)"
+NAME="Debian GNU/Linux"
+VERSION_ID="10"
+VERSION="10 (buster)"
+VERSION_CODENAME=buster
+ID=debian
+HOME_URL="https://www.debian.org/"
+SUPPORT_URL="https://www.debian.org/support"
+BUG_REPORT_URL="https://bugs.debian.org/"
+
+
+1. Change the SSH `port:
+    1.a: Replace the default SSH port with 13387 in the sshd_config file:
+        sed -i.bak 's/#Port 22/Port 13378/g'  /etc/ssh/sshd_config
+        service sshd restart
+    1.b: Allow incoming connections on port 13378
+        iptables -I INPUT -p tcp --dport 13378 --syn -j ACCEPT
+        sudo ufw allow 13387/tcp
+        service sshd restart
+    1.c: Change the hostname:
+        hostnamectl set-hostname cluster-eu01.wpmt.tech
+    1.d: Defining the ll alias:
+        alias ll='ls -la'
+
+2. Install Python:
+    2.a: Zip and Git 
+        apt-get install zip git -y 
+    2.b: Python dependencies 
+        sudo apt install wget build-essential libreadline-gplv2-dev libncursesw5-dev \
+        libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev zlib1g-dev
+    2.c: Downloading Python installation package
+        wget https://www.python.org/ftp/python/3.9.4/Python-3.9.4.tgz
+        tar xzf Python-3.9.4.tgz
+    2.d: Completing  the setup
+        cd ./Python-3.9.4 
+        ./configure --enable-optimizations 
+        make altinstall
+
+3. Verify Python setup:
+        pip3.9 -V
+        python3.9  -V
+
+4. Install Nginx:
+        apt-get install nginx -y
+
+5. Setting up the Nginx config:
+    5.a: Deploying the './k8s/nginx/nginx.conf' configuration file
+    5.b: Creating a symlink for it:
+            ln -s /etc/nginx/sites-available/cluster-eu01-wpmt-tech.conf /etc/nginx/sites-enabled/cluster-eu01-wpmt-tech.conf
+
+6. Creating the App users and group:
+    groupadd apps
+    useradd signup --create-home
+    useradd auth --create-home
+    useradd logger --create-home
+    useradd state --create-home
+    for i in signup auth logger; do usermod -a -G apps $i; done
+
+7. Setup the Git repo and download the Apps
+    cd /home/signup
+    git remote add origin ssh://root@172.104.246.196:1337/home/todorivanov/todorivanov.eu/public_html/WPMT/WPMT-Cluster-API
+    git pull origin master
+
+    cd /home/auth
+    git remote add origin ssh://root@172.104.246.196:1337/home/todorivanov/todorivanov.eu/public_html/WPMT/WPMT-Cluster-Auth
+    git pull origin master
+
+    cd /home/logger
+    git remote add origin ssh://root@172.104.246.196:1337/home/todorivanov/todorivanov.eu/public_html/WPMT/WPMT-Cluster-Logger
+    git pull origin master
+    
+    cd /home/logger
+    git remote add origin ssh://root@172.104.246.196:1337/home/todorivanov/todorivanov.eu/public_html/WPMT/WPMT-Cluster-State
+    git pull origin master
+
+8. Setup the MySQL service, access and download the DB prototype
+    8.a. Install MySQL
+        sudo apt install mariadb-server -y
+        mysql_secure_installation \n \n \y \y \y \y
+    8.b Add the user MySQL setup file 
+        cat <<'EOF' >> /usr/local/bin/create-mysql-user
+DB_Name=$1 
+echo "Enter Database Name: $DB_Name";
+DB_User=$2 
+echo "Enter Database User: $DB_User";
+DB_Pass=$3 
+echo "Enter Database Pass: $DB_Pass";
+Q1="CREATE DATABASE IF NOT EXISTS $DB_Name;";
+Q2="GRANT USAGE ON *.* TO $DB_User@localhost IDENTIFIED BY '$DB_Pass';";
+Q3="GRANT ALL PRIVILEGES ON $DB_Name.* TO $DB_User@localhost;";
+Q4="FLUSH PRIVILEGES;"
+SQL="${Q1}${Q2}${Q3}${Q4}";
+mysql -u root -e "$SQL"
+EOF
+    8.c Add a MySQL user 
+        sh /usr/local/bin/create-mysql-user
+        sh /usr/local/bin/create-mysql-user cluster_eu01 cluser_eu01_user kP6hE3zE7aJ7nQ6i
+    8.d Import the DB prototype    
+        mysql -u root -e cluster_eu01<____DB_SQL_FILE____ 
+
+9. Setup the MongoDB service, configuration and database:
+    9.a Go to and download:
+        cd /root/; wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | sudo apt-key add -
+    9.b Update the DB and install MongoDB:
+        sudo apt-get update; sudo apt-get install -y mongodb-org
+    9.c Enable and Start the serivce: 
+        sudo systemctl enable mongod; systemctl start mongod;
+
+10. Install Python requirements via Pip:
+    pip3 install --no-cache-dir -r requirements.txt
+    python3.9 main.py &amp
+    
+11. Setup a service for each App
+    11.a Create a new service file for the WPll\\MT-User App:
+        cat <<'EOF' >> /lib/systemd/system/wpmt-user.service
+[Unit]
+Description=WPMT Cluster App for user signup and management
+[Service]
+WorkingDirectory=/home/signup/src
+User=signup
+ExecStart=python3.9 main.py
+Restart=always
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat <<'EOF' >> /lib/systemd/system/wpmt-auth.service
+[Unit]
+Description=WPMT Cluster App for authenticating users
+[Service]
+WorkingDirectory=/home/auth/src
+User=auth
+ExecStart=python3.9 main.py
+Restart=always
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat <<'EOF' >> /lib/systemd/system/wpmt-logger.service
+[Unit]
+Description=WPMT Cluster App for storting and reading logs
+[Service]
+WorkingDirectory=/home/logger/src
+User=logger
+ExecStart=python3.9 main.py
+Restart=always
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat <<'EOF' >> /lib/systemd/system/wpmt-state.service
+[Unit]
+Description=WPMT Cluster App for user signup and management
+[Service]
+WorkingDirectory=/home/statte/src
+User=state
+ExecStart=python3.9 main.py
+Restart=always
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+    10.?: Enable and Start the services:
+        systemctl daemon-reload
+        for i in wpmt-user wpmt-auth wpmt-logger wpmt-state; do systemctl enable $i; systemctl start $i; done
+
+11. Setting up the logs:
+    11.a Create the log folder and files:
+        mkdir /var/log/wpmt
+        for i in info access error; do touch $i; done
+    11.b Change the permissions and ownership:
+        chown root:apps /var/log/wpmt -R 
+        chmod 0674 /var/log/wpmt -R 
+
+
+
+
+
+
+
+
+
+======================
+        DEBUGGING
+======================
+
+Show the error log of the Python service on the server:
+
+    journalctl -u _____SERVICE_____ -f (follow)
+
+
